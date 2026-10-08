@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Trị Website Gia Tộc - Họ Lê Việt Nam</title>
+    <!-- Thư viện giao diện chuẩn -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- Thư viện kết nối Supabase -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-800 font-sans p-4">
+
+    <!-- KHUNG ĐĂNG NHẬP -->
+    <div id="login-form" class="flex items-center justify-center min-h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-md w-96 border-t-4 border-red-700">
+            <h2 class="text-2xl font-bold mb-6 text-center text-red-700">Đăng Nhập Quản Trị</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Email Quản trị</label>
+                <input type="email" id="email" class="w-full p-2 border rounded focus:outline-none focus:border-red-700"
+                    placeholder="admin@example.com">
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-2">Mật khẩu</label>
+                <input type="password" id="password"
+                    class="w-full p-2 border rounded focus:outline-none focus:border-red-700" placeholder="••••••••">
+            </div>
+            <button onclick="login()"
+                class="w-full bg-red-700 hover:bg-red-800 text-white p-2 rounded font-bold transition">Đăng
+                Nhập</button>
+            <p id="login-error" class="text-red-500 text-sm mt-3 text-center hidden"></p>
+        </div>
+    </div>
+
+    <!-- GIAO DIỆN QUẢN TRỊ CHÍNH -->
+    <div id="admin-panel" class="hidden container mx-auto max-w-6xl mt-4">
+        <div class="flex justify-between items-center mb-6 border-b pb-4 bg-white p-4 rounded shadow-sm">
+            <h1 class="text-2xl font-bold text-red-700">Hệ Thống Đăng Bài & Video Gia Tộc</h1>
+            <button onclick="logout()"
+                class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-semibold text-sm">Thoát hệ
+                thống</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- PHẦN THÊM / SỬA BÀI VIẾT VÀ VIDEO -->
+            <div class="bg-white p-5 rounded-lg shadow-md h-fit">
+                <h3 id="form-title" class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Đăng Bài Viết Mới</h3>
+                <input type="hidden" id="edit-id">
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Tiêu đề bài viết *</label>
+                    <input type="text" id="tieu_de"
+                        class="w-full p-2 border rounded text-sm focus:outline-none focus:border-red-700" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Nội dung chi tiết *</label>
+                    <textarea id="noi_dung" rows="5"
+                        class="w-full p-2 border rounded text-sm focus:outline-none focus:border-red-700"
+                        required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Đường dẫn Hình ảnh (URL)</label>
+                    <input type="text" id="hinh_anh"
+                        class="w-full p-2 border rounded text-sm placeholder-gray-400 focus:outline-none focus:border-red-700"
+                        placeholder="https://.../anh.jpg">
+                </div>
+
+                <!-- Ô NHẬP VIDEO ĐÃ ĐƯỢC BỔ SUNG -->
+                <div class="mb-3">
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Đường dẫn Video (Youtube/URL)
+                        *</label>
+                    <input type="text" id="video"
+                        class="w-full p-2 border rounded text-sm placeholder-gray-400 focus:outline-none focus:border-red-700"
+                        placeholder="https://youtube.com...">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Người đăng</label>
+                    <input type="text" id="nguoi_dang"
+                        class="w-full p-2 border rounded text-sm focus:outline-none focus:border-red-700"
+                        value="Ban Quản Trị">
+                </div>
+
+                <button onclick="savePost()" id="btn-save"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white p-2 rounded font-bold text-sm transition">Đăng
+                    Lên Trang Web</button>
+                <button onclick="resetForm()" id="btn-cancel"
+                    class="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 p-2 rounded font-bold text-sm mt-2 transition hidden">Hủy
+                    sửa</button>
+            </div>
+
+            <!-- PHẦN DANH SÁCH BÀI VIẾT ĐÃ CÓ -->
+            <div class="lg:col-span-2 bg-white p-5 rounded-lg shadow-md">
+                <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">Các bài viết và video trên hệ thống</h3>
+                <div id="posts-list" class="space-y-3 max-h-[600px] overflow-y-auto">
+                    <p class="text-gray-500 italic text-sm">Đang tải danh sách bài viết...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BƯỚC QUAN TRỌNG: Bạn hãy dán lại thông tin dự án của bạn vào 2 dòng dưới đây
+        const SUPABASE_URL = "DÁN_PROJECT_URL_CỦA_BẠN_VÀO_ĐÂY";
+        const SUPABASE_ANON_KEY = "DÁN_ANON_KEY_CỦA_BẠN_VÀO_ĐÂY";
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        window.onload = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) { showAdminPanel(); }
+        };
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorText = document.getElementById('login-error');
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                errorText.innerText = "Lỗi: Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản!";
+                errorText.classList.remove('hidden');
+            } else { showAdminPanel(); }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+        }
+
+        function showAdminPanel() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            loadPosts();
+        }
+
+        async function loadPosts() {
+            const { data: posts, error } = await supabase.from('tin_tuc').select('*').order('id', { ascending: false });
+            const listDiv = document.getElementById('posts-list');
+            listDiv.innerHTML = '';
+            if (!posts || posts.length === 0) {
+                listDiv.innerHTML = '<p class="text-gray-500 text-sm italic">Chưa có bài viết nào.</p>';
+                return;
+            }
+            posts.forEach(post => {
+                listDiv.innerHTML += `
+                    <div class="border p-3 rounded bg-gray-50 flex justify-between items-start shadow-sm text-sm">
+                        <div class="w-4/5">
+                            <h4 class="font-bold text-gray-900">${post.tieu_de}</h4>
+                            <p class="text-gray-600 text-xs line-clamp-2 mt-1">${post.noi_dung}</p>
+                            <div class="mt-2 space-x-2">
+                                <span class="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded">Người đăng: ${post.nguoi_dang}</span>
+                                ${post.video ? `<span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">Có Video 🎥</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="flex space-x-3 pt-1">
+                            <button onclick="editPost(${post.id}, '${escapeHtml(post.tieu_de)}', '${escapeHtml(post.noi_dung)}', '${escapeHtml(post.hinh_anh || '')}', '${escapeHtml(post.video || '')}', '${escapeHtml(post.nguoi_dang)}')" class="text-blue-600 hover:underline font-semibold">Sửa</button>
+                            <button onclick="deletePost(${post.id})" class="text-red-600 hover:underline font-semibold">Xóa</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function savePost() {
+            const id = document.getElementById('edit-id').value;
+            const tieu_de = document.getElementById('tieu_de').value;
+            const noi_dung = document.getElementById('noi_dung').value;
+            const hinh_anh = document.getElementById('hinh_anh').value;
+            const video = document.getElementById('video').value;
+            const nguoi_dang = document.getElementById('nguoi_dang').value;
+
+            if (!tieu_de || !noi_dung) { alert('Vui lòng điền Tiêu đề và Nội dung!'); return; }
+
+            // Lưu dữ liệu bao gồm cả trường video vào bảng bai_viet hoặc tin_tuc tùy ý, ở đây đồng bộ với bảng tin_tuc của bạn
+            if (id) {
+                await supabase.from('tin_tuc').update({ tieu_de, noi_dung, hinh_anh, video, nguoi_dang }).eq('id', id);
+            } else {
+                await supabase.from('tin_tuc').insert([{ tieu_de, noi_dung, hinh_anh, video, nguoi_dang }]);
+            }
+            resetForm(); loadPosts(); alert('Cập nhật dữ liệu thành công!');
+        }
+
+        async function deletePost(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+                await supabase.from('tin_tuc').delete().eq('id', id);
+                loadPosts();
+            }
+        }
+
+        function editPost(id, tieu_de, noi_dung, hinh_anh, video, nguoi_dang) {
+              document.getElementById('edit-id').value = id; 
+              document.getElementById('tieu_de').value = tieu_de; 
+              document.getElementById('noi_dung').value = noi_dung; 
+              document.getElementById('hinh_anh').value = hinh_anh; 
+              document.getElementById('video').value = video; 
+              document.getElementById('nguoi_dang').value = nguoi_dang; 
+              document.getElementById('form-title').innerText = "Chỉnh Sửa Bài Viết"; 
+              document.getElementById('btn-save').innerText = "Cập Nhật Ngay"; 
+              document.getElementById('btn-cancel').classList.remove('hidden');
+            } 
+        function resetForm() { 
+            document.getElementById('edit-id').value = ''; 
+            document.getElementById('tieu_de').value = ''; 
+            document.getElementById('noi_dung').value = ''; 
+            document.getElementById('hinh_anh').value = ''; 
+            document.getElementById('video').value = ''; 
+            document.getElementById('nguoi_dang').value = 'Ban Quản Trị'; 
+            document.getElementById('form-title').innerText = "Đăng Bài Viết Mới"; 
+            document.getElementById('btn-save').innerText = "Đăng Lên Trang Web"; 
+            document.getElementById('btn-cancel').classList.add('hidden'); 
+        } 
+        function escapeHtml(str) { return str.replace(/'/g, "\'").replace(/"/g, '"'); }
